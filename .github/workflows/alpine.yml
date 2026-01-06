@@ -12,9 +12,9 @@ on:
 
 env:
   # Use docker.io for Docker Hub if empty
-  REGISTRY: ${{ secrets.REGISTRY }}
-  USERNAME: ${{ secrets.USERNAME }}
-  NAMESPACE: ${{ secrets.NAMESPACE }}
+  REGISTRY: ${{ vars.REGISTRY }}
+  USERNAME: ${{ vars.USERNAME }}
+  NAMESPACE: ${{ vars.NAMESPACE }}
   # github.repository as <account>/<repo>
   IMAGE_NAME: alpine
 
