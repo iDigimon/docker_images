@@ -3,7 +3,6 @@ LABEL authors="tiyee"
 RUN go mod download -x github.com/redis/go-redis/v9@latest
 RUN go mod download -x github.com/tiyee/holydramon@latest
 RUN go mod download -x github.com/wechatpay-apiv3/wechatpay-go@latest
-RUN go mod download -x github.com/karlseguin/ccache/v3@latest
 RUN go mod download -x gorm.io/gorm@latest
 RUN go mod download -x github.com/alibabacloud-go/darabonba-openapi/v2@latest
 RUN go mod download -x github.com/alibabacloud-go/dysmsapi-20170525/v3@latest
