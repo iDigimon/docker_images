@@ -19,5 +19,5 @@ ENV VIRTUAL_ENV=/venv
 RUN /venv/bin/pip install --upgrade pip
 RUN source /venv/bin/activate
 # 在虚拟环境中安装Python包
-RUN pip install oss2  httpx[http2] requests redis pillow "pydantic>=2.0.0" gunicorn uvicorn[standard]
+RUN pip install oss2  httpx[http2] httpx2[http2] requests redis pillow "pydantic>=2.0.0" gunicorn uvicorn[standard]
 
