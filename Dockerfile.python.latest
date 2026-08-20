@@ -1,4 +1,4 @@
-FROM python:3.12
+FROM python:latest
 LABEL authors="tiyee"
 SHELL ["/bin/bash", "-c"]
 ENV TZ=Asia/Shanghai \
