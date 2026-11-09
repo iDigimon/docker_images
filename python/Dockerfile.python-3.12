@@ -20,3 +20,6 @@ RUN /venv/bin/pip install --upgrade pip
 RUN source /venv/bin/activate
 # 在虚拟环境中安装Python包
 RUN pip install oss2 tos httpx[http2] requests redis pillow "pydantic>=2.0.0" gunicorn uvicorn[standard] playwright
+
+RUN --network=none --mount=type=bind,source=verify-image.py,target=/tmp/verify-image.py \
+    ["python", "-B", "/tmp/verify-image.py", "3.12", "gunicorn", "playwright.sync_api", "tos", "uvicorn"]

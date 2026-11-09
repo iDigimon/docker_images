@@ -1,0 +1,21 @@
+name: Promote ACR image
+description: Promote a verified candidate by digest and optionally save the previous release
+inputs:
+  repository:
+    description: ACR image repository without a tag
+    required: true
+  candidate:
+    description: Full candidate image reference
+    required: true
+  tag:
+    description: Release tag to update
+    required: true
+  digest:
+    description: Manifest digest returned by the build action
+    required: true
+  rollback:
+    description: Preserve the current release under a digest-specific rollback tag
+    default: 'false'
+runs:
+  using: node24
+  main: index.cjs

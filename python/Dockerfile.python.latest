@@ -21,5 +21,7 @@ RUN cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && echo 'Asia/Shanghai'>
 RUN pip3 install --upgrade pip 
 RUN pip3 install oss2 "httpx[http2]" "httpx2[http2]" requests redis pillow celery pydantic_settings "pydantic>=2.0.0" uv
 
+RUN --network=none --mount=type=bind,source=verify-image.py,target=/tmp/verify-image.py \
+    ["python", "-B", "/tmp/verify-image.py", "latest", "celery", "httpx2", "pydantic_settings"]
 
 
