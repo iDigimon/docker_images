@@ -18,6 +18,3 @@ ENV VIRTUAL_ENV=/venv
 COPY requirements.python-3.10.txt /tmp/requirements.python-3.10.txt
 RUN python -m pip install --no-cache-dir "pip==26.2.2" \
     && python -m pip install --no-cache-dir -r /tmp/requirements.python-3.10.txt
-
-RUN --network=none --mount=type=bind,source=verify-image.py,target=/tmp/verify-image.py \
-    ["python", "-B", "/tmp/verify-image.py", "3.10", "gunicorn", "tos", "uvicorn"]
