@@ -43,6 +43,14 @@ jobs:
           username: ${{ env.USERNAME }}
           password: ${{ secrets.PASSWORD }}
 
+      - name: Log in to Tencent Cloud TCR
+        if: github.event_name != 'pull_request' && vars.TCR_REGISTRY != ''
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ${{ vars.TCR_REGISTRY }}
+          username: ${{ vars.TCR_USERNAME }}
+          password: ${{ secrets.TCR_PASSWORD }}
+
       # Extract metadata (tags, labels) for Docker
       # https://github.com/docker/metadata-action
       - name: Extract Docker metadata
@@ -59,7 +67,9 @@ jobs:
           context: ./golang
           file: ./golang/Dockerfile.golang
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}:latest
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}:latest
+            ${{ vars.TCR_REGISTRY != '' && format('{0}/{1}/{2}:latest', vars.TCR_REGISTRY, vars.TCR_NAMESPACE, env.IMAGE_NAME) || '' }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
