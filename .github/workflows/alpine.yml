@@ -65,8 +65,8 @@ jobs:
         id: build-and-push
         uses: docker/build-push-action@v7
         with:
-          context: .
-          file: ./Dockerfile.alpine
+          context: ./alpine
+          file: ./alpine/Dockerfile.alpine
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}:latest
           labels: ${{ steps.meta.outputs.labels }}

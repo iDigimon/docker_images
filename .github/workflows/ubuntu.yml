@@ -72,8 +72,8 @@ jobs:
         id: build-and-push-latest
         uses: docker/build-push-action@v7
         with:
-          context: .
-          file: ./Dockerfile.ubuntu
+          context: ./ubuntu
+          file: ./ubuntu/Dockerfile.ubuntu
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}:latest
           labels: ${{ steps.meta.outputs.labels }}
@@ -85,8 +85,8 @@ jobs:
         id: build-and-push-2204
         uses: docker/build-push-action@v7
         with:
-          context: .
-          file: ./Dockerfile.ubuntu.22.04
+          context: ./ubuntu
+          file: ./ubuntu/Dockerfile.ubuntu.22.04
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}:22.04
           labels: ${{ steps.meta.outputs.labels }}

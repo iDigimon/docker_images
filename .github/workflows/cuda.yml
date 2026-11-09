@@ -72,8 +72,8 @@ jobs:
         id: build-and-push-cuda
         uses: docker/build-push-action@v7
         with:
-          context: .
-          file: ./Dockerfile.ubuntu.cuda
+          context: ./ubuntu
+          file: ./ubuntu/Dockerfile.ubuntu.cuda
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}:latest
           labels: ${{ steps.meta.outputs.labels }}
