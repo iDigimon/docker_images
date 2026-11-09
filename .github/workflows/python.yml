@@ -1,122 +1,154 @@
 name: Python Build
 
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
-
 on:
   schedule:
-    - cron:  '30 5 * * 1'
+    - cron: '30 5 * * 1'
   workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/python.yml'
+      - 'Dockerfile.python*'
+      - 'requirements.python-*.txt'
+      - 'requirements.txt'
 
-env:
-  # Use docker.io for Docker Hub if empty
-  REGISTRY: ${{ secrets.REGISTRY }}
-  USERNAME: ${{ secrets.USERNAME }}
-  NAMESPACE: ${{ secrets.NAMESPACE }}
-  # github.repository as <account>/<repo>
-  IMAGE_NAME: python
+permissions:
+  contents: read
 
+defaults:
+  run:
+    shell: bash
 
 jobs:
   build:
-
+    if: github.event_name != 'workflow_dispatch' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    name: Python ${{ matrix.tag }}
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-      # This is used to complete the identity challenge
-      # with sigstore/fulcio when running outside of PRs.
-      id-token: write
+    timeout-minutes: 45
+    concurrency:
+      group: python-${{ matrix.tag }}-${{ github.event_name == 'pull_request' && github.ref || 'publish' }}
+      cancel-in-progress: false
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - tag: '3.9'
+            dockerfile: Dockerfile.python-3.9
+            imports: gunicorn httpx2 uvicorn
+            keep_rollback: true
+          - tag: '3.10'
+            dockerfile: Dockerfile.python
+            imports: gunicorn tos uvicorn
+            keep_rollback: true
+          - tag: '3.12'
+            dockerfile: Dockerfile.python-3.12
+            imports: gunicorn playwright.sync_api tos uvicorn
+          - tag: latest
+            dockerfile: Dockerfile.python.latest
+            imports: celery httpx2 pydantic_settings
+
+    env:
+      LOCAL_IMAGE: python-ci:${{ matrix.tag }}
+      PYTHON_TAG: ${{ matrix.tag }}
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
-
-      # Install the cosign tool except on PR
-      # https://github.com/sigstore/cosign-installer
-      - name: Install cosign
-        if: github.event_name != 'pull_request'
-        uses: sigstore/cosign-installer@v4.1.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          cosign-release: 'v3.0.6'
+          persist-credentials: false
 
-      # Set up BuildKit Docker container builder to be able to build
-      # multi-platform images and export cache
-      # https://github.com/docker/setup-buildx-action
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4.2.0
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
 
-      # Login against a Docker registry except on PR
-      # https://github.com/docker/login-action
-      - name: Log into registry ${{ env.REGISTRY }}
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v4.6.0
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ env.USERNAME }}
-          password: ${{ secrets.PASSWORD }}
-
-      # Extract metadata (tags, labels) for Docker
-      # https://github.com/docker/metadata-action
       - name: Extract Docker metadata
         id: meta
-        uses: docker/metadata-action@v6
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
         with:
-          images: ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}
+          images: python
+          tags: type=raw,value=${{ matrix.tag }}
 
-      # Build and push Docker image with Buildx (don't push on PR)
-      # https://github.com/docker/build-push-action
-      - name: Build and push Docker image 3.10
-        id: build-and-push-python310
-        uses: docker/build-push-action@v7.3.0
+      - name: Build Python image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
-          file: ./Dockerfile.python
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}:3.10
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          tags: ${{ env.LOCAL_IMAGE }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          pull: true
+          no-cache: ${{ github.event_name != 'pull_request' }}
+          load: true
+          cache-from: type=gha,scope=python-${{ matrix.tag }}
+          cache-to: type=gha,scope=python-${{ matrix.tag }},mode=max,ignore-error=true
           provenance: false
           sbom: false
-      - name: Build and push Docker image latest
-        id: build-and-push-latest
-        uses: docker/build-push-action@v7.3.0
-        with:
-          context: .
-          file: ./Dockerfile.python.latest
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}:latest
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          provenance: false
-          sbom: false
-      - name: Build and push Docker image 3.9
-        id: build-and-push-python39
-        uses: docker/build-push-action@v7.3.0
-        with:
-          context: .
-          file: ./Dockerfile.python-3.9
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}:3.9
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          provenance: false
-          sbom: false
-      - name: Build and push Docker image 3.12
-        id: build-and-push-python312
-        uses: docker/build-push-action@v7.3.0
-        with:
-          context: .
-          file: ./Dockerfile.python-3.12
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}:3.12
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          provenance: false
-          sbom: false
+
+      - name: Verify Python version and dependencies
+        env:
+          EXTRA_IMPORTS: ${{ matrix.imports }}
+        run: |
+          docker run --rm -i --network none -e PYTHON_TAG -e EXTRA_IMPORTS "$LOCAL_IMAGE" python - <<'PY'
+          import importlib
+          import os
+          import subprocess
+          import sys
+
+          expected = os.environ["PYTHON_TAG"]
+          actual = f"{sys.version_info.major}.{sys.version_info.minor}"
+          if expected != "latest" and actual != expected:
+              raise SystemExit(f"Expected Python {expected}, got {actual}")
+
+          subprocess.run([sys.executable, "-m", "pip", "check"], check=True)
+          for module in ["oss2", "httpx", "PIL", "pydantic", "redis", "requests", *os.environ["EXTRA_IMPORTS"].split()]:
+              importlib.import_module(module)
+          PY
+
+      - name: Publish tested image to ACR
+        if: github.event_name != 'pull_request'
+        env:
+          REGISTRY: ${{ secrets.REGISTRY }}
+          NAMESPACE: ${{ secrets.NAMESPACE }}
+          USERNAME: ${{ secrets.USERNAME }}
+          PASSWORD: ${{ secrets.PASSWORD }}
+          KEEP_ROLLBACK: ${{ matrix.keep_rollback && 'true' || 'false' }}
+        run: |
+          : "${REGISTRY:?Missing REGISTRY}" "${NAMESPACE:?Missing NAMESPACE}" "${USERNAME:?Missing USERNAME}" "${PASSWORD:?Missing PASSWORD}"
+          printf '%s' "$PASSWORD" | docker login "$REGISTRY" --username "$USERNAME" --password-stdin
+          trap 'docker logout "$REGISTRY" >/dev/null' EXIT
+
+          repository="$REGISTRY/$NAMESPACE/python"
+          release="$repository:$PYTHON_TAG"
+          build="$repository:$PYTHON_TAG-build-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          docker tag "$LOCAL_IMAGE" "$build"
+          docker push "$build"
+          digest=$(docker buildx imagetools inspect "$build" --format '{{.Manifest.Digest}}')
+          if [[ ! "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::The published build has no valid manifest digest"
+            exit 1
+          fi
+
+          if [[ "$KEEP_ROLLBACK" == true ]]; then
+            previous=$(docker buildx imagetools inspect "$release" --format '{{.Manifest.Digest}}')
+            if [[ ! "$previous" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+              echo "::error::The current release has no valid manifest digest"
+              exit 1
+            fi
+            rollback="$release-rollback-${previous#sha256:}"
+            docker buildx imagetools create --prefer-index=false --tag "$rollback" "$repository@$previous"
+            if [[ "$(docker buildx imagetools inspect "$rollback" --format '{{.Manifest.Digest}}')" != "$previous" ]]; then
+              echo "::error::The rollback tag does not match the current release digest"
+              exit 1
+            fi
+          fi
+
+          docker buildx imagetools create --prefer-index=false --tag "$release" "$repository@$digest"
+          if [[ "$(docker buildx imagetools inspect "$release" --format '{{.Manifest.Digest}}')" != "$digest" ]]; then
+            echo "::error::The release tag does not match the tested build digest"
+            exit 1
+          fi
+
+          {
+            printf 'Published tag: `%s`\n\nBuild tag: `%s`\n\nDigest: `%s`\n' "$release" "$build" "$digest"
+            if [[ "$KEEP_ROLLBACK" == true ]]; then
+              printf '\nRollback: `%s` at `%s`\n' "$rollback" "$previous"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
